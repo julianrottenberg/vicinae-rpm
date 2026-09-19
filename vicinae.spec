@@ -39,6 +39,7 @@ export CC=gcc-15 CXX=g++-15
 # (/usr/include/libxkbcommon, /usr/include/wayland); pass them explicitly.
 cmake -G Ninja -B build -S . \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr \
   -DLTO=ON \
   -DUSE_SYSTEM_PROTOBUF=OFF \
   -DUSE_SYSTEM_ABSEIL=OFF \

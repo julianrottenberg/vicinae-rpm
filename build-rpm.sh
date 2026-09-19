@@ -19,15 +19,16 @@ zypper -n in -y --no-recommends \
 
 export CC=gcc-15 CXX=g++-15
 
-mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-curl -fsSL -o ~/rpmbuild/SOURCES/vicinae-${VICINAE_VERSION}.tar.gz \
+TOPDIR="$HOME/rpmbuild"
+mkdir -p "$TOPDIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+curl -fsSL -o "$TOPDIR/SOURCES/vicinae-${VICINAE_VERSION}.tar.gz" \
   "https://codeload.github.com/vicinaehq/vicinae/tar.gz/refs/tags/v${VICINAE_VERSION}"
 
-cp /out/vicinae.spec ~/rpmbuild/SPECS/
-sed -i "s/^Version:.*/Version:        ${VICINAE_VERSION}/" ~/rpmbuild/SPECS/vicinae.spec
+cp /out/vicinae.spec "$TOPDIR/SPECS/"
+sed -i "s/^Version:.*/Version:        ${VICINAE_VERSION}/" "$TOPDIR/SPECS/vicinae.spec"
 
-rpmbuild -bb ~/rpmbuild/SPECS/vicinae.spec
+rpmbuild -bb --define "_topdir $TOPDIR" "$TOPDIR/SPECS/vicinae.spec"
 
 mkdir -p /out/rpms
-cp ~/rpmbuild/RPMS/x86_64/vicinae-*.rpm /out/rpms/
+cp "$TOPDIR"/RPMS/x86_64/vicinae-*.rpm /out/rpms/
 echo "RPM_BUILD_OK"
