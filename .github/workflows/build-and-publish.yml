@@ -1,0 +1,80 @@
+name: build-and-publish
+
+on:
+  schedule:
+    - cron: "7 */6 * * *" # every 6 hours
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force rebuild even if version is unchanged"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest="$(gh api repos/vicinaehq/vicinae/releases/latest --jq .tag_name | sed 's/^v//')"
+          current="$(cat version 2>/dev/null || echo none)"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $latest, packaged: $current"
+          if [ "$latest" = "$current" ] && [ "${{ inputs.force }}" != "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build RPM in Tumbleweed container
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          mkdir -p out
+          docker run --rm \
+            -v "$PWD/vicinae.spec:/out/vicinae.spec:ro" \
+            -v "$PWD/build-rpm.sh:/out/build-rpm.sh:ro" \
+            -v "$PWD/out:/out/rpms" \
+            -e VICINAE_VERSION="${{ steps.check.outputs.latest }}" \
+            opensuse/tumbleweed:latest bash /out/build-rpm.sh
+
+      - name: Sign RPM and build repo metadata
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y rpm createrepo-c
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          keyid="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print $5; exit}')"
+          # signing key is unprotected, so plain --addsign works unattended
+          printf '%%_signature gpg\n%%_gpg_name %s\n' "$keyid" > ~/.rpmmacros
+          rpm --addsign out/vicinae-*.rpm
+          mkdir -p repo/repodata
+          cp out/vicinae-*.rpm repo/
+          gpg --batch --yes --armor --export "$keyid" > repo/repodata/repomd.xml.key
+          createrepo_c repo/
+          gpg --batch --yes --detach-sign --armor repo/repodata/repomd.xml
+
+      - name: Publish to gh-pages
+        if: steps.check.outputs.skip != 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
+
+      - name: Bump version file
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          echo "${{ steps.check.outputs.latest }}" > version
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version
+          git commit -m "vicinae ${{ steps.check.outputs.latest }}"
+          git push
