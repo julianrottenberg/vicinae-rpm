@@ -50,6 +50,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
         run: |
           set -euo pipefail
+          sudo chown -R "$USER:$USER" out/
           sudo apt-get update && sudo apt-get install -y rpm createrepo-c
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           keyid="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print $5; exit}')"
