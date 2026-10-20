@@ -5,7 +5,13 @@ set -euo pipefail
 
 : "${VICINAE_VERSION:?set VICINAE_VERSION (e.g. 0.29.0)}"
 
-zypper -n ref -f
+# Mirror metadata refreshes flake with curl timeouts; retry before giving up.
+for attempt in 1 2 3; do
+  zypper -n ref -f && break
+  [ "$attempt" = 3 ] && exit 4
+  echo "zypper ref failed (attempt $attempt); retrying in 30s..."
+  sleep 30
+done
 zypper -n in -y --no-recommends \
   cmake ninja gcc15-c++ git rpm-build curl nodejs npm ccache pkg-config \
   qt6-base-devel qt6-gui-private-devel qt6-declarative-devel \
