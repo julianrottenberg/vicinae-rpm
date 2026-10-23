@@ -26,6 +26,12 @@ jobs:
         run: |
           latest="$(gh api repos/vicinaehq/vicinae/releases/latest \
             --jq .tag_name | sed 's/^v//')"
+          # Attacker-influenced upstream tag: it reaches a spec file, a container
+          # env var and a commit message. Refuse anything but a plain version.
+          if ! printf '%s' "$latest" | grep -Eq '^[0-9]+(\.[0-9]+){1,3}([-+][0-9A-Za-z.]{1,16})?$'; then
+            echo "::error::Upstream tag '$latest' is not a valid version string; refusing to build."
+            exit 1
+          fi
           force="${{ inputs.force }}"
           current="$(cat version 2>/dev/null || echo none)"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
@@ -37,14 +43,18 @@ jobs:
 
       - name: Build RPM in Tumbleweed container
         if: steps.check.outputs.skip != 'true'
+        env:
+          VIC: ${{ steps.check.outputs.latest }}
+          TW_IMAGE: docker.io/opensuse/tumbleweed@sha256:c2dc2e1dfcefd411a433b9fa00f368eafef4db17b7623d4b1b1c16d26dd89dc4
         run: |
+          set -euo pipefail
           mkdir -p out
           docker run --rm \
             -v "$PWD/vicinae.spec:/out/vicinae.spec:ro" \
             -v "$PWD/build-rpm.sh:/out/build-rpm.sh:ro" \
             -v "$PWD/out:/out/rpms" \
-            -e VICINAE_VERSION="${{ steps.check.outputs.latest }}" \
-            opensuse/tumbleweed:latest bash /out/build-rpm.sh
+            -e VICINAE_VERSION="$VIC" \
+            "$TW_IMAGE" bash /out/build-rpm.sh
 
       - name: Sign RPM and build repo metadata
         if: steps.check.outputs.skip != 'true'
@@ -76,12 +86,14 @@ jobs:
 
       - name: Bump version file
         if: steps.check.outputs.skip != 'true'
+        env:
+          VIC: ${{ steps.check.outputs.latest }}
         run: |
-          echo "${{ steps.check.outputs.latest }}" > version
+          echo "$VIC" > version
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version
-          git commit -m "vicinae ${{ steps.check.outputs.latest }}"
+          git commit -m "vicinae $VIC"
           for attempt in 1 2 3; do
             git pull --rebase --autostash && git push && break
             [ "$attempt" = 3 ] && exit 1
