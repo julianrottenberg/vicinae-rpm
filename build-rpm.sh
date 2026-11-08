@@ -16,7 +16,7 @@ zypper -n in -y --no-recommends \
   cmake ninja gcc15-c++ git rpm-build curl nodejs npm ccache pkg-config \
   qt6-base-devel qt6-gui-private-devel qt6-declarative-devel \
   qt6-declarative-private-devel qt6-wayland-devel qt6-wayland-private-devel \
-  qt6-svg-devel qt6-shadertools-devel qt6-linguist-devel \
+  qt6-svg-devel qt6-shadertools-devel qt6-linguist-devel qt6-multimedia-devel \
   layer-shell-qt6 layer-shell-qt6-devel qtkeychain-qt6-devel \
   kf6-syntax-highlighting-devel \
   libqalculate-devel libicu-devel libopenssl-devel \

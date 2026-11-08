@@ -18,7 +18,7 @@ ExclusiveArch:  x86_64
 BuildRequires:  cmake ninja gcc15-c++ git nodejs npm pkg-config ccache
 BuildRequires:  qt6-base-devel qt6-gui-private-devel qt6-declarative-devel
 BuildRequires:  qt6-declarative-private-devel qt6-wayland-devel qt6-wayland-private-devel
-BuildRequires:  qt6-svg-devel qt6-shadertools-devel qt6-linguist-devel
+BuildRequires:  qt6-svg-devel qt6-shadertools-devel qt6-linguist-devel qt6-multimedia-devel
 BuildRequires:  layer-shell-qt6 layer-shell-qt6-devel qtkeychain-qt6-devel
 BuildRequires:  kf6-syntax-highlighting-devel
 BuildRequires:  libqalculate-devel libicu-devel libopenssl-devel
